@@ -221,7 +221,7 @@
         const urlParams = new URLSearchParams(window.location.search);
         
         // Proxy server URL (change to your Railway URL when deployed)
-        const PROXY_SERVER = urlParams.get('proxy') || localStorage.getItem('proxyServer') || 'http://localhost:3000';
+        const PROXY_SERVER = urlParams.get('proxy') || localStorage.getItem('proxyServer') || 'https://galactickitties-production.up.railway.app';
         
         // RPC URLs
         const BASE_RPC = urlParams.get('baseRpc') || localStorage.getItem('baseRpc') || 'https://sepolia.base.org';
