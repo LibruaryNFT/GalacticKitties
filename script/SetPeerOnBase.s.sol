@@ -6,8 +6,8 @@ import "../src/GalacticKittiesAdapter.sol";
 
 contract SetPeerOnBase is Script {
     function run() external {
-        address baseAdapter = 0x953015B459e7862DE2d2CF3624c2DadfFf6310c2;
-        address flowOnft = 0xEff1A41FC690152a9C2ce26aF24aF0dbB321397B;
+        address baseAdapter = 0x7eD427C937235822c43D30c56aa52823E55E0c42;
+        address flowOnft = 0x255763f3fC9774E04559ee7A4d49F78a27759C09;
         uint32 flowEid = 40351;
         
         uint256 privateKey = vm.envUint("BASE_SEPOLIA_PRIVATE_KEY");

@@ -20,5 +20,16 @@
 /coverage
 
 *.env
+.env.local
+.env.*.local
 
+# Broadcast directory (contains transaction data)
 /broadcast
+
+# Build outputs
+/dist
+/build
+
+# React app
+node_modules
+dist

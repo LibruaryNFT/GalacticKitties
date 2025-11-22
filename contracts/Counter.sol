@@ -1,19 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.28;
+pragma solidity ^0.8.13;
 
 contract Counter {
-  uint public x;
+    uint256 public number;
 
-  event Increment(uint by);
+    function setNumber(uint256 newNumber) public {
+        number = newNumber;
+    }
 
-  function inc() public {
-    x++;
-    emit Increment(1);
-  }
-
-  function incBy(uint by) public {
-    require(by > 0, "incBy: increment should be positive");
-    x += by;
-    emit Increment(by);
-  }
+    function increment() public {
+        number++;
+    }
 }

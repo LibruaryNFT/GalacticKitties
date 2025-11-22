@@ -20,7 +20,7 @@ contract SetEnforcedOptions is Script {
     
     function run() external {
         uint256 privateKey = vm.envUint("BASE_SEPOLIA_PRIVATE_KEY");
-        address adapter = 0x953015B459e7862DE2d2CF3624c2DadfFf6310c2;
+        address adapter = 0x7eD427C937235822c43D30c56aa52823E55E0c42;
         uint32 flowEid = 40351;
         
         vm.startBroadcast(privateKey);

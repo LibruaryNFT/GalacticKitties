@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Galactic Kitties</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; 
+            max-width: 1400px; 
+            margin: 0 auto; 
+            padding: 20px; 
+            background: #f5f5f5;
+        }
+        h1 { color: #333; text-align: center; }
+        .loading { text-align: center; padding: 20px; color: #666; }
+        .nft-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); 
+            gap: 20px; 
+            margin-top: 20px;
+        }
+        .nft-card { 
+            background: white;
+            border: 2px solid #ddd; 
+            border-radius: 12px; 
+            padding: 20px; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        .nft-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .nft-image {
+            width: 100%;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            background: #f0f0f0;
+            min-height: 300px;
+            object-fit: cover;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .nft-image.loaded {
+            opacity: 1;
+        }
+        .nft-title {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .nft-description {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+        .chain-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .chain-base { background: #0052ff; color: white; }
+        .chain-flow { background: #00d4aa; color: white; }
+        .attributes {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+        .attribute {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            font-size: 0.9em;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .attribute:last-child {
+            border-bottom: none;
+        }
+        .attribute-type {
+            color: #666;
+            font-weight: 500;
+        }
+        .attribute-value {
+            color: #333;
+            font-weight: bold;
+        }
+        .error {
+            color: #d32f2f;
+            padding: 10px;
+            background: #ffebee;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .info-box {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-size: 0.85em;
+        }
+        .link {
+            color: #0052ff;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .link:hover {
+            text-decoration: underline;
+        }
+        .toggle-container {
+            text-align: center;
+            margin: 20px 0;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+            margin: 0 10px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #0052ff;
+        }
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+        .raw-data {
+            display: none;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+        .raw-data.show {
+            display: block;
+        }
+        .raw-item {
+            margin: 8px 0;
+            font-size: 0.85em;
+        }
+        .raw-label {
+            color: #666;
+            font-weight: 500;
+            display: block;
+            margin-bottom: 4px;
+        }
+        .raw-value {
+            font-family: monospace;
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 4px;
+            word-break: break-all;
+            font-size: 0.9em;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 Galactic Kitties</h1>
+    
+    <div style="text-align: center; margin: 20px 0; padding: 15px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <div style="font-size: 0.9em; color: #666; margin-bottom: 10px;">
+            <strong>Config:</strong> Proxy: <span id="config-proxy"></span> | 
+            Address: <span id="config-address"></span>
+        </div>
+        <div style="font-size: 0.85em; color: #999;">
+            💡 Use URL params: <code>?address=0x...&proxy=http://...</code>
+        </div>
+    </div>
+    
+    <div class="toggle-container">
+        <label>
+            <span>Show Raw CIDs & Piece IDs</span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="showRawToggle">
+                <span class="slider"></span>
+            </label>
+        </label>
+    </div>
+    
+    <div id="loading" class="loading">Loading NFTs from Base and Flow...</div>
+    <div id="nfts" class="nft-grid"></div>
+
+    <script>
+        // Get config from URL parameters or use defaults
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        // Proxy server URL (change to your Railway URL when deployed)
+        const PROXY_SERVER = urlParams.get('proxy') || localStorage.getItem('proxyServer') || 'http://localhost:3000';
+        
+        // RPC URLs
+        const BASE_RPC = urlParams.get('baseRpc') || localStorage.getItem('baseRpc') || 'https://sepolia.base.org';
+        const FLOW_RPC = urlParams.get('flowRpc') || localStorage.getItem('flowRpc') || 'https://testnet.evm.nodes.onflow.org';
+        
+        // Contract addresses
+        const BASE_NFT = urlParams.get('baseNft') || localStorage.getItem('baseNft') || '0x3A25Ec105ac25f27476998616555674F7F8EBA3E';
+        const FLOW_NFT = urlParams.get('flowNft') || localStorage.getItem('flowNft') || '0x255763f3fC9774E04559ee7A4d49F78a27759C09';
+        
+        // User address
+        const YOUR_ADDRESS = urlParams.get('address') || localStorage.getItem('userAddress') || '0x8151A21cdAA1675A105497859AE181EDd3d0c5C2';
+        
+        // Save to localStorage for next time
+        if (urlParams.get('proxy')) localStorage.setItem('proxyServer', PROXY_SERVER);
+        if (urlParams.get('baseRpc')) localStorage.setItem('baseRpc', BASE_RPC);
+        if (urlParams.get('flowRpc')) localStorage.setItem('flowRpc', FLOW_RPC);
+        if (urlParams.get('baseNft')) localStorage.setItem('baseNft', BASE_NFT);
+        if (urlParams.get('flowNft')) localStorage.setItem('flowNft', FLOW_NFT);
+        if (urlParams.get('address')) localStorage.setItem('userAddress', YOUR_ADDRESS);
+        
+        const ABI = [
+            "function balanceOf(address owner) view returns (uint256)",
+            "function ownerOf(uint256 tokenId) view returns (address)",
+            "function tokenURI(uint256 tokenId) view returns (string)"
+        ];
+
+        // Extract CID from filecoin:// or ipfs:// URL
+        function extractCID(uri) {
+            if (!uri) return null;
+            if (uri.startsWith('filecoin://')) {
+                return uri.replace('filecoin://', '');
+            }
+            if (uri.startsWith('ipfs://')) {
+                return uri.replace('ipfs://', '');
+            }
+            // If it's just a CID, return as-is
+            return uri;
+        }
+
+        // Fetch metadata from proxy server with retry logic
+        async function fetchMetadata(pieceCid, retries = 2) {
+            for (let i = 0; i <= retries; i++) {
+                try {
+                    const response = await fetch(`${PROXY_SERVER}/metadata/${pieceCid}`);
+                    if (response.status === 429) {
+                        // Rate limited - wait and retry
+                        const waitTime = Math.pow(2, i) * 1000; // Exponential backoff
+                        await new Promise(resolve => setTimeout(resolve, waitTime));
+                        continue;
+                    }
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    return await response.json();
+                } catch (error) {
+                    if (i === retries) {
+                        console.error('Error fetching metadata:', error);
+                        return null;
+                    }
+                    // Wait before retry
+                    await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+                }
+            }
+            return null;
+        }
+
+        // Get image URL from proxy server
+        function getImageUrl(pieceCid) {
+            if (!pieceCid) return null;
+            return `${PROXY_SERVER}/image/${pieceCid}`;
+        }
+
+        async function loadNFTs(chain) {
+            const rpc = chain === 'base' ? BASE_RPC : FLOW_RPC;
+            const contractAddress = chain === 'base' ? BASE_NFT : FLOW_NFT;
+            
+            const provider = new ethers.providers.JsonRpcProvider(rpc);
+            const contract = new ethers.Contract(contractAddress, ABI, provider);
+            
+            try {
+                const balance = await contract.balanceOf(YOUR_ADDRESS);
+                if (balance.toString() === '0') {
+                    return []; // No NFTs on this chain
+                }
+                
+                // Find owned tokens with rate limiting
+                const foundTokens = [];
+                const maxCheck = 100;
+                
+                for (let i = 1; i <= maxCheck && foundTokens.length < balance; i++) {
+                    try {
+                        // Add delay to avoid rate limiting (429 errors)
+                        if (i > 1) {
+                            await new Promise(resolve => setTimeout(resolve, 100)); // 100ms delay between requests
+                        }
+                        
+                        const owner = await contract.ownerOf(i);
+                        if (owner.toLowerCase() === YOUR_ADDRESS.toLowerCase()) {
+                            foundTokens.push(i);
+                        }
+                    } catch (e) {
+                        // Token doesn't exist or rate limited
+                        if (e.message && e.message.includes('429')) {
+                            // Rate limited - wait longer and retry
+                            console.log('Rate limited, waiting 2 seconds...');
+                            await new Promise(resolve => setTimeout(resolve, 2000));
+                            // Retry once
+                            try {
+                                const owner = await contract.ownerOf(i);
+                                if (owner.toLowerCase() === YOUR_ADDRESS.toLowerCase()) {
+                                    foundTokens.push(i);
+                                }
+                            } catch (retryError) {
+                                // Skip this token
+                            }
+                        }
+                    }
+                }
+                
+                // Get token URIs and fetch metadata with rate limiting
+                const nftData = [];
+                for (let idx = 0; idx < foundTokens.length; idx++) {
+                    const tokenId = foundTokens[idx];
+                    try {
+                        // Add delay between requests
+                        if (idx > 0) {
+                            await new Promise(resolve => setTimeout(resolve, 150)); // 150ms delay
+                        }
+                        
+                        const uri = await contract.tokenURI(tokenId);
+                        const metadataCid = extractCID(uri);
+                        
+                        // Fetch metadata from proxy (with retry on rate limit)
+                        let metadata = null;
+                        if (metadataCid) {
+                            try {
+                                metadata = await fetchMetadata(metadataCid);
+                            } catch (metaError) {
+                                if (metaError.message && metaError.message.includes('429')) {
+                                    // Wait and retry
+                                    await new Promise(resolve => setTimeout(resolve, 1000));
+                                    metadata = await fetchMetadata(metadataCid);
+                                }
+                            }
+                        }
+                        
+                        nftData.push({
+                            tokenId: tokenId.toString(),
+                            chain: chain,
+                            uri: uri,
+                            contractAddress: contractAddress,
+                            metadata: metadata,
+                            metadataCid: metadataCid
+                        });
+                    } catch (e) {
+                        console.error(`Error loading token ${tokenId}:`, e);
+                        // If rate limited, wait and continue
+                        if (e.message && e.message.includes('429')) {
+                            await new Promise(resolve => setTimeout(resolve, 2000));
+                        }
+                        nftData.push({
+                            tokenId: tokenId.toString(),
+                            chain: chain,
+                            uri: null,
+                            contractAddress: contractAddress,
+                            metadata: null,
+                            error: e.message
+                        });
+                    }
+                }
+                
+                return nftData;
+            } catch (error) {
+                console.error(`Error loading ${chain} NFTs:`, error);
+                return [];
+            }
+        }
+
+        function displayNFT(nft) {
+            const nftDiv = document.createElement('div');
+            nftDiv.className = 'nft-card';
+            
+            const chainClass = nft.chain === 'base' ? 'chain-base' : 'chain-flow';
+            const chainName = nft.chain === 'base' ? 'Base Sepolia' : 'Flow EVM';
+            const explorerBase = nft.chain === 'base' 
+                ? `https://sepolia.basescan.org/token/${nft.contractAddress}?a=${nft.tokenId}`
+                : `https://evm-testnet.flowscan.io/token/${nft.contractAddress}?a=${nft.tokenId}`;
+            
+            // Extract data from metadata
+            const name = nft.metadata?.name || `Galactic Kitty #${nft.tokenId}`;
+            const description = nft.metadata?.description || 'An omnichain space cat';
+            const attributes = nft.metadata?.attributes || [];
+            
+            // Get image CID from metadata
+            let imageCid = null;
+            if (nft.metadata?.image) {
+                imageCid = extractCID(nft.metadata.image);
+            }
+            
+            // Build image HTML
+            let imageHtml = '';
+            if (imageCid) {
+                const imageUrl = getImageUrl(imageCid);
+                imageHtml = `<img src="${imageUrl}" alt="${name}" class="nft-image" loading="lazy"
+                    onload="this.classList.add('loaded')"
+                    onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'300\\' height=\\'300\\'%3E%3Ctext x=\\'50%25\\' y=\\'50%25\\' text-anchor=\\'middle\\' dy=\\'.3em\\'%3EImage Loading...%3C/text%3E%3C/svg%3E'">`;
+            } else {
+                imageHtml = `<div class="nft-image" style="display: flex; align-items: center; justify-content: center; color: #999; background: #f0f0f0;">
+                    Image not available
+                </div>`;
+            }
+            
+            // Build attributes HTML
+            let attributesHtml = '';
+            if (attributes.length > 0) {
+                attributesHtml = '<div class="attributes"><strong>Attributes:</strong>';
+                attributes.forEach(attr => {
+                    attributesHtml += `
+                        <div class="attribute">
+                            <span class="attribute-type">${attr.trait_type}:</span>
+                            <span class="attribute-value">${attr.value}</span>
+                        </div>
+                    `;
+                });
+                attributesHtml += '</div>';
+            }
+            
+            // Build raw data section
+            const rawDataHtml = `
+                <div class="raw-data" id="raw-${nft.chain}-${nft.tokenId}">
+                    <div class="raw-item">
+                        <span class="raw-label">Token URI:</span>
+                        <div class="raw-value">${nft.uri || 'N/A'}</div>
+                    </div>
+                    ${nft.metadataCid ? `
+                    <div class="raw-item">
+                        <span class="raw-label">Metadata Piece CID:</span>
+                        <div class="raw-value">${nft.metadataCid}</div>
+                    </div>
+                    ` : ''}
+                    ${imageCid ? `
+                    <div class="raw-item">
+                        <span class="raw-label">Image Piece CID:</span>
+                        <div class="raw-value">${imageCid}</div>
+                    </div>
+                    ` : ''}
+                    <div class="raw-item">
+                        <span class="raw-label">Contract Address:</span>
+                        <div class="raw-value">${nft.contractAddress}</div>
+                    </div>
+                    <div class="raw-item">
+                        <span class="raw-label">Owner Address:</span>
+                        <div class="raw-value">${YOUR_ADDRESS}</div>
+                    </div>
+                </div>
+            `;
+            
+            nftDiv.innerHTML = `
+                <span class="chain-badge ${chainClass}">${chainName}</span>
+                ${imageHtml}
+                <div class="nft-title">${name}</div>
+                <div class="nft-description">${description}</div>
+                ${attributesHtml}
+                ${rawDataHtml}
+                ${nft.error ? `<div class="error">Error: ${nft.error}</div>` : ''}
+                ${!nft.metadata && nft.metadataCid ? `<div class="info-box">⚠️ Could not load metadata from Filecoin. Make sure proxy server is running.</div>` : ''}
+                <div style="margin-top: 15px;">
+                    <a href="${explorerBase}" target="_blank" class="link">View on Explorer →</a>
+                </div>
+            `;
+            
+            document.getElementById('nfts').appendChild(nftDiv);
+        }
+
+        // Toggle raw data visibility
+        function setupToggle() {
+            const toggle = document.getElementById('showRawToggle');
+            toggle.addEventListener('change', function() {
+                const show = this.checked;
+                document.querySelectorAll('.raw-data').forEach(el => {
+                    if (show) {
+                        el.classList.add('show');
+                    } else {
+                        el.classList.remove('show');
+                    }
+                });
+            });
+        }
+
+        // Auto-load on page load
+        async function init() {
+            try {
+                // Check if proxy server is running
+                try {
+                    const healthCheck = await fetch(`${PROXY_SERVER}/health`);
+                    if (!healthCheck.ok) {
+                        throw new Error('Proxy server not responding');
+                    }
+                } catch (e) {
+                    document.getElementById('loading').innerHTML = `
+                        <div class="error">
+                            ⚠️ Proxy server not running!<br>
+                            Start it with: <code>node filecoin/server.js</code>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                const [baseNFTs, flowNFTs] = await Promise.all([
+                    loadNFTs('base'),
+                    loadNFTs('flow')
+                ]);
+                
+                document.getElementById('loading').style.display = 'none';
+                
+                const allNFTs = [...baseNFTs, ...flowNFTs];
+                
+                if (allNFTs.length === 0) {
+                    document.getElementById('nfts').innerHTML = '<div class="loading">No NFTs found. Make sure you have NFTs minted and the contract addresses are correct.</div>';
+                    return;
+                }
+                
+                // Display all NFTs with lazy loading
+                allNFTs.forEach(nft => displayNFT(nft));
+                
+                // Setup intersection observer for better lazy loading control
+                setupLazyLoading();
+            } catch (error) {
+                document.getElementById('loading').innerHTML = `<div class="error">Error loading NFTs: ${error.message}</div>`;
+            }
+        }
+
+        // Setup intersection observer for lazy loading images
+        function setupLazyLoading() {
+            const images = document.querySelectorAll('.nft-image[loading="lazy"]');
+            
+            // Use Intersection Observer for better lazy loading
+            if ('IntersectionObserver' in window) {
+                const imageObserver = new IntersectionObserver((entries, observer) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const img = entry.target;
+                            img.classList.add('loaded');
+                            observer.unobserve(img);
+                        }
+                    });
+                }, {
+                    rootMargin: '50px' // Start loading 50px before image enters viewport
+                });
+
+                images.forEach(img => {
+                    imageObserver.observe(img);
+                });
+            } else {
+                // Fallback: mark all as loaded if IntersectionObserver not supported
+                images.forEach(img => img.classList.add('loaded'));
+            }
+        }
+
+        // Display current config
+        function showConfig() {
+            document.getElementById('config-proxy').textContent = PROXY_SERVER;
+            document.getElementById('config-address').textContent = YOUR_ADDRESS.substring(0, 10) + '...';
+        }
+
+        // Start loading when page loads
+        window.addEventListener('DOMContentLoaded', () => {
+            showConfig();
+            setupToggle();
+            init();
+        });
+    </script>
+</body>
+</html>
+

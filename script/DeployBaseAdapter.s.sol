@@ -8,7 +8,7 @@ contract DeployBaseAdapter is Script {
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("BASE_SEPOLIA_PRIVATE_KEY");
         
-        address galacticKitties = 0x23F1a69E8100D758bb1E88F783e565739f66F6E5;
+        address galacticKitties = 0x3A25Ec105ac25f27476998616555674F7F8EBA3E;
         address lzEndpoint = 0x6EDCE65403992e310A62460808c4b910D972f10f;
         address delegate = vm.addr(deployerPrivateKey);
         
