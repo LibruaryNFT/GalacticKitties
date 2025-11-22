@@ -1,0 +1,11 @@
+{
+    "name": "Galactic Kitty #4",
+    "description": "An omnichain space cat bridged via LayerZero. Images stored on Filecoin Onchain Cloud.",
+    "image": "filecoin://bafkzcibez3fqmdpkmrpvzhyzo2yrliwsjoulszv6fe2ogl7idjmr4pvow4uwo5mceu",
+    "attributes": [
+      { "trait_type": "Rarity", "value": "Common" },
+      { "trait_type": "Origin Chain", "value": "Base Sepolia" },
+      { "trait_type": "Bridge Protocol", "value": "LayerZero V2" },
+      { "trait_type": "Storage", "value": "Filecoin Onchain Cloud" }
+    ]
+  }
