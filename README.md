@@ -82,7 +82,11 @@ FLOW_EVM_RPC_URL=https://testnet.evm.nodes.onflow.org
 
 **Bridge Transaction:** [0xbbd9254b21f67e1ccd0d30e7872efca7a3bd62baf7be1e25a8171e0f6b2bf919](https://sepolia.basescan.org/tx/0xbbd9254b21f67e1ccd0d30e7872efca7a3bd62baf7be1e25a8171e0f6b2bf919)
 
-Token ID 2 successfully bridged from Base to Flow EVM. View on [LayerZero Scan](https://testnet.layerzeroscan.com).
+Token ID 1 successfully bridged from Base to Flow EVM. View on [LayerZero Scan](https://testnet.layerzeroscan.com).
+
+Also can be seen here:
+https://evm-testnet.flowscan.io/token/0x255763f3fC9774E04559ee7A4d49F78a27759C09
+
 
 ## Technologies
 
@@ -90,6 +94,12 @@ Token ID 2 successfully bridged from Base to Flow EVM. View on [LayerZero Scan](
 - **Filecoin Onchain Cloud** - Decentralized storage (Synapse SDK)
 - **Foundry** - Smart contract development
 - **OpenZeppelin** - Secure contract libraries
+
+## AI Used 
+
+- Including Cursor for the front-end
+- Gemini for images
+- Scripts were made with quick start guides from sponsors guides with guidance from ClaudeAI
 
 ## Resources
 
