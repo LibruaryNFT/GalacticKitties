@@ -5,8 +5,9 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "cd viewer && npm run build",
-    "deploy": "npm run build && node copy-dist-to-root.js"
+    "build:viewer": "cd viewer && npm run build",
+    "deploy": "npm run build:viewer && node copy-dist-to-root.js",
+    "start": "node index.js"
   },
   "keywords": [],
   "author": "",
