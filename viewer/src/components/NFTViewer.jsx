@@ -150,6 +150,7 @@ function NFTViewer() {
   const { address, isConnected } = useAccount()
   const [nfts, setNfts] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadingMessage, setLoadingMessage] = useState('Initializing...')
   const [showRawData, setShowRawData] = useState(false)
 
   // Viewing address (defaults to owner, but can view any address)
@@ -169,11 +170,13 @@ function NFTViewer() {
     async function loadNFTs() {
       console.log('Loading NFTs for address:', viewingAddress)
       setLoading(true)
+      setLoadingMessage('Checking Base Sepolia balance...')
       const allNFTs = []
 
       // Load Base NFTs
       if (baseBalance && Number(baseBalance) > 0) {
         console.log('Base balance:', Number(baseBalance))
+        setLoadingMessage(`Loading ${Number(baseBalance)} NFT${Number(baseBalance) > 1 ? 's' : ''} from Base Sepolia...`)
         const baseNFTs = await loadChainNFTs('base', Number(baseBalance), viewingAddress)
         console.log('Base NFTs found:', baseNFTs.length)
         allNFTs.push(...baseNFTs)
@@ -208,6 +211,7 @@ function NFTViewer() {
           const balance = BigInt(flowBalance.result)
           if (balance > 0n) {
             console.log('Flow balance:', Number(balance))
+            setLoadingMessage(`Loading ${Number(balance)} NFT${Number(balance) > 1 ? 's' : ''} from Flow EVM...`)
             const flowNFTs = await loadChainNFTs('flow', Number(balance), viewingAddress)
             console.log('Flow NFTs found:', flowNFTs.length)
             allNFTs.push(...flowNFTs)
@@ -218,6 +222,7 @@ function NFTViewer() {
       }
 
       console.log('Total NFTs loaded:', allNFTs.length)
+      setLoadingMessage('Finalizing...')
       setNfts(allNFTs)
       setLoading(false)
     }
@@ -338,9 +343,17 @@ function NFTViewer() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-dark-muted text-lg">Loading NFTs from Base and Flow...</p>
+        <div className="text-center space-y-4">
+          <div className="relative">
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-cosmic-border border-t-cosmic-accent mx-auto"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="h-8 w-8 rounded-full bg-cosmic-accent/20 animate-pulse"></div>
+            </div>
+          </div>
+          <div>
+            <p className="text-cosmic-muted text-lg font-semibold mb-2">{loadingMessage}</p>
+            <p className="text-cosmic-muted/80 text-sm">This may take a moment...</p>
+          </div>
         </div>
       </div>
     )
@@ -349,16 +362,16 @@ function NFTViewer() {
   return (
     <div className="space-y-6">
       {isConnected && (
-        <div className="bg-dark-surface border border-dark-border rounded-lg p-4">
-          <p className="text-sm text-dark-muted">
-            Viewing: <span className="text-dark-text font-mono">{viewingAddress.substring(0, 6)}...{viewingAddress.substring(38)}</span>
+        <div className="bg-cosmic-surface border border-cosmic-border rounded-lg p-4 backdrop-blur-sm">
+          <p className="text-sm text-cosmic-muted/90">
+            Viewing: <span className="text-cosmic-muted/80 font-mono">{viewingAddress.substring(0, 6)}...{viewingAddress.substring(38)}</span>
           </p>
         </div>
       )}
 
-      <div className="flex items-center justify-center bg-dark-surface border border-dark-border rounded-lg p-4">
+      <div className="flex items-center justify-center border border-cosmic-border rounded-lg p-4 backdrop-blur-sm" style={{ backgroundColor: '#1e1e3e' }}>
         <label className="flex items-center space-x-3 cursor-pointer">
-          <span className="text-dark-text font-medium">Show Raw CIDs & Piece IDs</span>
+          <span className="text-cosmic-text font-medium">Show Raw CIDs & Piece IDs</span>
           <div className="relative">
             <input
               type="checkbox"
@@ -366,8 +379,8 @@ function NFTViewer() {
               onChange={(e) => setShowRawData(e.target.checked)}
               className="sr-only"
             />
-            <div className={`w-14 h-7 rounded-full transition-colors ${showRawData ? 'bg-blue-600' : 'bg-dark-border'}`}>
-              <div className={`w-6 h-6 bg-white rounded-full shadow-md transform transition-transform ${showRawData ? 'translate-x-7' : 'translate-x-1'} mt-0.5`}></div>
+            <div className={`w-14 h-7 rounded-full transition-colors ${showRawData ? 'bg-gradient-to-r from-cosmic-accent to-cosmic-nebula' : 'bg-cosmic-border'}`}>
+              <div className={`w-6 h-6 bg-gray-300 rounded-full shadow-md transform transition-transform ${showRawData ? 'translate-x-7' : 'translate-x-1'} mt-0.5`}></div>
             </div>
           </div>
         </label>
@@ -375,8 +388,8 @@ function NFTViewer() {
 
       {nfts.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-dark-muted text-lg">No NFTs found</p>
-          <p className="text-dark-muted text-sm mt-2">Make sure you have NFTs minted and the contract addresses are correct.</p>
+          <p className="text-cosmic-muted text-lg">No NFTs found</p>
+          <p className="text-cosmic-muted text-sm mt-2">Make sure you have NFTs minted and the contract addresses are correct.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
@@ -512,7 +525,7 @@ function NFTCard({ nft, address, showRawData, viewingAddress }) {
   const imageUrl = imageCid ? `${PROXY_SERVER}/image/${imageCid}` : null
 
   return (
-    <div className="bg-dark-card border border-dark-border rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all hover:border-dark-border/50">
+    <div className="border border-cosmic-border rounded-xl overflow-hidden shadow-lg hover:shadow-xl hover:shadow-purple-500/20 transition-all hover:border-cosmic-accent/50 backdrop-blur-sm" style={{ backgroundColor: '#1a1a2e' }}>
       <div className="p-3 space-y-3">
         <div className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${
           nft.chain === 'base' 
@@ -523,7 +536,7 @@ function NFTCard({ nft, address, showRawData, viewingAddress }) {
         </div>
         
         {imageUrl ? (
-          <div className="w-full max-w-[120px] mx-auto aspect-square rounded-lg overflow-hidden bg-dark-surface">
+          <div className="w-full max-w-[120px] mx-auto aspect-square rounded-lg overflow-hidden border border-cosmic-border/50" style={{ backgroundColor: '#1e1e3e' }}>
             <img 
               src={imageUrl} 
               alt={`NFT ${nft.tokenId}`} 
@@ -532,7 +545,7 @@ function NFTCard({ nft, address, showRawData, viewingAddress }) {
             />
           </div>
         ) : (
-          <div className="w-full max-w-[120px] mx-auto aspect-square bg-dark-surface rounded-lg flex items-center justify-center text-dark-muted text-xs">
+          <div className="w-full max-w-[120px] mx-auto aspect-square rounded-lg flex items-center justify-center text-cosmic-muted text-xs border border-cosmic-border/50" style={{ backgroundColor: '#1e1e3e' }}>
             No image
           </div>
         )}
@@ -542,19 +555,19 @@ function NFTCard({ nft, address, showRawData, viewingAddress }) {
             <h3 className="text-base font-bold text-white mb-1 line-clamp-1">
               {nft.metadata?.name || `Galactic Kitty #${nft.tokenId}`}
             </h3>
-            <p className="text-dark-muted text-xs line-clamp-2">
+            <p className="text-cosmic-muted text-xs line-clamp-2">
               {nft.metadata?.description || 'An omnichain space cat'}
             </p>
           </div>
           
           {nft.metadata?.attributes && nft.metadata.attributes.length > 0 && (
             <div className="space-y-1.5">
-              <h4 className="text-xs font-semibold text-dark-text uppercase tracking-wide">Attributes</h4>
+              <h4 className="text-xs font-semibold text-cosmic-text uppercase tracking-wide">Attributes</h4>
               <div className="grid grid-cols-2 gap-1.5">
                 {nft.metadata.attributes.slice(0, 4).map((attr, i) => (
-                  <div key={i} className="bg-dark-surface rounded p-1.5 border border-dark-border">
-                    <div className="text-[10px] text-dark-muted uppercase truncate">{attr.trait_type}</div>
-                    <div className="text-xs font-semibold text-white truncate">{attr.value}</div>
+                  <div key={i} className="rounded p-1.5 border border-cosmic-border" style={{ backgroundColor: '#1e1e3e' }}>
+                    <div className="text-[10px] text-cosmic-muted uppercase truncate">{attr.trait_type}</div>
+                    <div className="text-xs font-semibold text-cosmic-text truncate">{attr.value}</div>
                   </div>
                 ))}
               </div>
@@ -563,16 +576,16 @@ function NFTCard({ nft, address, showRawData, viewingAddress }) {
         </div>
         
         {canBridge && nft.chain === 'base' && (
-          <div className="space-y-2 pt-2 border-t border-dark-border">
+          <div className="space-y-2 pt-2 border-t border-cosmic-border">
             {feeData && (
-              <div className="text-[10px] text-dark-muted">
+              <div className="text-[10px] text-cosmic-muted">
                 Fee: ~{formatEther(feeData.nativeFee)} ETH
               </div>
             )}
             <button
               onClick={handleBridge}
               disabled={isPending || isConfirming || bridging}
-              className="w-full bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2 px-3 rounded-lg transition-all text-xs"
+              className="w-full bg-gradient-to-r from-cosmic-accent to-cosmic-nebula hover:from-purple-600 hover:to-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2 px-3 rounded-lg transition-all text-xs shadow-lg shadow-purple-500/30"
             >
               {isPending || isConfirming || bridging ? 'Bridging...' : '🌉 Bridge to Flow'}
             </button>
@@ -591,27 +604,27 @@ function NFTCard({ nft, address, showRawData, viewingAddress }) {
         )}
         
         {showRawData && (
-          <div className="pt-2 border-t border-dark-border space-y-2">
-            <h4 className="text-xs font-semibold text-dark-text uppercase tracking-wide">Raw Data</h4>
+          <div className="pt-2 border-t border-cosmic-border space-y-2">
+            <h4 className="text-xs font-semibold text-cosmic-text uppercase tracking-wide">Raw Data</h4>
             <div className="space-y-1.5 text-[10px]">
               <div>
-                <div className="text-dark-muted mb-0.5">Token URI:</div>
-                <div className="bg-dark-surface rounded p-1.5 font-mono text-dark-text break-all text-[9px]">
+                <div className="text-cosmic-muted mb-0.5">Token URI:</div>
+                <div className="rounded p-1.5 font-mono text-cosmic-text break-all text-[9px] border border-cosmic-border" style={{ backgroundColor: '#1e1e3e' }}>
                   {nft.uri || 'N/A'}
                 </div>
               </div>
               {nft.metadataCid && (
                 <div>
-                  <div className="text-dark-muted mb-0.5">Metadata CID:</div>
-                  <div className="bg-dark-surface rounded p-1.5 font-mono text-dark-text break-all text-[9px]">
+                  <div className="text-cosmic-muted mb-0.5">Metadata CID:</div>
+                  <div className="rounded p-1.5 font-mono text-cosmic-text break-all text-[9px] border border-cosmic-border" style={{ backgroundColor: '#1e1e3e' }}>
                     {nft.metadataCid}
                   </div>
                 </div>
               )}
               {imageCid && (
                 <div>
-                  <div className="text-dark-muted mb-0.5">Image CID:</div>
-                  <div className="bg-dark-surface rounded p-1.5 font-mono text-dark-text break-all text-[9px]">
+                  <div className="text-cosmic-muted mb-0.5">Image CID:</div>
+                  <div className="rounded p-1.5 font-mono text-cosmic-text break-all text-[9px] border border-cosmic-border" style={{ backgroundColor: '#1e1e3e' }}>
                     {imageCid}
                   </div>
                 </div>

@@ -9,7 +9,9 @@ export default defineConfig({
   build: {
     outDir: '../dist',
     emptyOutDir: true,
+    assetsDir: 'assets',
   },
+  base: '/', // Use absolute paths for deployment
   server: {
     port: 5173,
     open: true,
