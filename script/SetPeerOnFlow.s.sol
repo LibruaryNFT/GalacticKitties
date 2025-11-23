@@ -2,7 +2,7 @@
 pragma solidity ^0.8.22;
 
 import "forge-std/Script.sol";
-import "../src/WrappedGalacticKittiesONFT.sol";
+import "../contracts/WrappedGalacticKittiesONFT.sol";
 
 contract SetPeerOnFlow is Script {
     function run() external {
