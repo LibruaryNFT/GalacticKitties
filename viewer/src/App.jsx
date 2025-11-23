@@ -7,12 +7,15 @@ function App() {
       <header className="sticky top-0 z-50 bg-gradient-to-r from-purple-900/40 via-indigo-900/40 to-purple-900/40 backdrop-blur-md border-b border-purple-500/30 shadow-xl shadow-purple-500/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-24">
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-4">
               <img 
                 src="/logo.jpg" 
                 alt="Galactic Kitties" 
                 className="h-20 object-contain"
               />
+              <p className="text-sm text-white/80 font-medium hidden md:block">
+                Omnichain NFTs bridged via LayerZero with decentralized Filecoin storage & metadata
+              </p>
             </div>
           </div>
         </div>
