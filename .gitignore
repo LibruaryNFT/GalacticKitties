@@ -33,3 +33,8 @@
 # React app
 node_modules
 dist
+
+# Viewer React app
+viewer/node_modules
+viewer/dist
+viewer/.vite

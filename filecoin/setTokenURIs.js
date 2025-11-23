@@ -19,9 +19,32 @@ async function setTokenURIs() {
   const abi = ["function setTokenURI(uint256 tokenId, string memory uri) external"];
   const baseNFT = new ethers.Contract(baseContract, abi, baseSigner);
 
-  // Set URIs for tokens 3-9
-  for (let tokenId = 3; tokenId <= 9; tokenId++) {
-    const pieceCid = metadataCids[tokenId]["/"];
+  // Set URIs for tokens 4-15 (or all tokens that have metadata)
+  const tokenIds = Object.keys(metadataCids).map(Number).sort((a, b) => a - b);
+  
+  for (const tokenId of tokenIds) {
+    // Skip if already set (optional - you can remove this check)
+    try {
+      const existingURI = await baseNFT.tokenURI(tokenId);
+      if (existingURI && existingURI.startsWith("filecoin://")) {
+        console.log(`⏭️  Token ${tokenId} already has URI, skipping...`);
+        continue;
+      }
+    } catch (e) {
+      // Token might not exist yet, continue
+    }
+
+    // Handle nested structure if it exists
+    let pieceCid = metadataCids[tokenId]?.["/"];
+    if (typeof pieceCid === 'object' && pieceCid["/"]) {
+      pieceCid = pieceCid["/"];
+    }
+    
+    if (!pieceCid || typeof pieceCid !== 'string') {
+      console.log(`⚠️  No valid CID found for token ${tokenId}, skipping...`);
+      continue;
+    }
+    
     const uri = `filecoin://${pieceCid}`;
 
     console.log(`Setting URI for token ${tokenId} on Base...`);

@@ -1,6 +1,15 @@
 import { Synapse, RPC_URLS, TIME_CONSTANTS } from "@filoz/synapse-sdk";
 import { ethers } from "ethers";
 import fs from "fs";
+import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load .env from parent directory (project root)
+dotenv.config({ path: path.join(__dirname, "..", ".env") });
 
 async function uploadImages() {
   const synapse = await Synapse.create({
@@ -21,13 +30,24 @@ async function uploadImages() {
   console.log("✅ Payment setup complete");
 
   // Upload each image
-  const imageCids = {};
+  // Load existing CIDs if file exists
+  let imageCids = {};
+  if (fs.existsSync("image-cids.json")) {
+    imageCids = JSON.parse(fs.readFileSync("image-cids.json", "utf8"));
+    console.log("📁 Loaded existing image CIDs");
+  }
 
-  for (let i = 1; i <= 3; i++) {
-    const imageData = fs.readFileSync(`${i}.jpg`);
+  // Upload images 4-15 (1-3 already uploaded)
+  for (let i = 4; i <= 15; i++) {
+    const imagePath = `${i}.jpg`;
+    if (!fs.existsSync(imagePath)) {
+      console.log(`⚠️  Skipping ${imagePath} - file not found`);
+      continue;
+    }
+    const imageData = fs.readFileSync(imagePath);
     const { pieceCid } = await synapse.storage.upload(imageData);
-    imageCids[i] = pieceCid;
-    console.log(`✅ Uploaded ${i}.jpg -> ${pieceCid}`);
+    imageCids[i] = { "/": pieceCid };
+    console.log(`✅ Uploaded ${imagePath} -> ${pieceCid}`);
   }
 
   // Save CIDs

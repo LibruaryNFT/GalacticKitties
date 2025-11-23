@@ -5,6 +5,9 @@ import * as dotenv from "dotenv";
 dotenv.config();
 
 export default defineConfig({
+  paths: {
+    scripts: "script", // Use "script" directory instead of default "scripts"
+  },
   solidity: {
     profiles: {
       default: {
