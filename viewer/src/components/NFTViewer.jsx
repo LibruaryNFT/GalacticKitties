@@ -6,7 +6,8 @@ import './NFTViewer.css'
 const BASE_NFT = '0x3A25Ec105ac25f27476998616555674F7F8EBA3E'
 const FLOW_NFT = '0x255763f3fC9774E04559ee7A4d49F78a27759C09'
 const FLOW_RPC = 'https://testnet.evm.nodes.onflow.org'
-const PROXY_SERVER = 'https://galactickitties-production.up.railway.app'
+// API server URL - can be overridden via VITE_API_URL environment variable
+const PROXY_SERVER = import.meta.env.VITE_API_URL || 'https://galactickitties-production.up.railway.app'
 const OWNER_ADDRESS = '0x8151a21cdaa1675a105497859ae181edd3d0c5c2'
 
 // ERC721 ABI

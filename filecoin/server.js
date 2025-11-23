@@ -1,4 +1,5 @@
 // Simple Filecoin proxy server for Railway deployment
+// This serves ONLY the API endpoints - the React app is deployed separately on GitHub Pages
 import express from "express";
 import { Synapse, RPC_URLS } from "@filoz/synapse-sdk";
 import cors from "cors";
