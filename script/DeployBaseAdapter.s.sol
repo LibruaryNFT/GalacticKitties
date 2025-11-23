@@ -2,7 +2,7 @@
 pragma solidity ^0.8.22;
 
 import "forge-std/Script.sol";
-import "../src/GalacticKittiesAdapter.sol";
+import "../contracts/GalacticKittiesAdapter.sol";
 
 contract DeployBaseAdapter is Script {
     function run() external {

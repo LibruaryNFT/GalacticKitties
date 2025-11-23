@@ -1,17 +1,13 @@
-import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
-import { baseSepolia } from 'wagmi/chains'
 import { useState, useEffect } from 'react'
-import { encodeFunctionData, decodeFunctionResult, formatEther, pad } from 'viem'
+import { encodeFunctionData, decodeFunctionResult } from 'viem'
 import './NFTViewer.css'
 
 // Contract addresses
 const BASE_NFT = '0x3A25Ec105ac25f27476998616555674F7F8EBA3E'
 const FLOW_NFT = '0x255763f3fC9774E04559ee7A4d49F78a27759C09'
-const ADAPTER_ADDRESS = '0x7eD427C937235822c43D30c56aa52823E55E0c42'
 const FLOW_RPC = 'https://testnet.evm.nodes.onflow.org'
 const PROXY_SERVER = 'https://galactickitties-production.up.railway.app'
 const OWNER_ADDRESS = '0x8151a21cdaa1675a105497859ae181edd3d0c5c2'
-const FLOW_EID = 40351
 
 // ERC721 ABI
 const ERC721_ABI = [
@@ -24,92 +20,19 @@ const ERC721_ABI = [
   },
   {
     inputs: [{ name: 'tokenId', type: 'uint256' }],
-    name: 'ownerOf',
-    outputs: [{ name: '', type: 'address' }],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [{ name: 'tokenId', type: 'uint256' }],
     name: 'tokenURI',
     outputs: [{ name: '', type: 'string' }],
     stateMutability: 'view',
     type: 'function',
   },
   {
-    inputs: [
-      { name: 'to', type: 'address' },
-      { name: 'tokenId', type: 'uint256' },
-    ],
-    name: 'approve',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-];
-
-// Adapter ABI
-const ADAPTER_ABI = [
-  {
-    inputs: [
-      {
-        components: [
-          { name: 'dstEid', type: 'uint32' },
-          { name: 'to', type: 'bytes32' },
-          { name: 'tokenId', type: 'uint256' },
-          { name: 'extraOptions', type: 'bytes' },
-          { name: 'composeMsg', type: 'bytes' },
-          { name: 'onftCmd', type: 'bytes' },
-        ],
-        name: 'sendParam',
-        type: 'tuple',
-      },
-      { name: 'payInLzToken', type: 'bool' },
-    ],
-    name: 'quoteSend',
-    outputs: [
-      {
-        components: [
-          { name: 'nativeFee', type: 'uint128' },
-          { name: 'lzTokenFee', type: 'uint128' },
-        ],
-        name: 'fee',
-        type: 'tuple',
-      },
-    ],
+    inputs: [{ name: 'tokenId', type: 'uint256' }],
+    name: 'ownerOf',
+    outputs: [{ name: '', type: 'address' }],
     stateMutability: 'view',
     type: 'function',
   },
-  {
-    inputs: [
-      {
-        components: [
-          { name: 'dstEid', type: 'uint32' },
-          { name: 'to', type: 'bytes32' },
-          { name: 'tokenId', type: 'uint256' },
-          { name: 'extraOptions', type: 'bytes' },
-          { name: 'composeMsg', type: 'bytes' },
-          { name: 'onftCmd', type: 'bytes' },
-        ],
-        name: 'sendParam',
-        type: 'tuple',
-      },
-      {
-        components: [
-          { name: 'nativeFee', type: 'uint128' },
-          { name: 'lzTokenFee', type: 'uint128' },
-        ],
-        name: 'fee',
-        type: 'tuple',
-      },
-      { name: 'refundTo', type: 'address' },
-    ],
-    name: 'send',
-    outputs: [],
-    stateMutability: 'payable',
-    type: 'function',
-  },
-];
+]
 
 // Extract CID from filecoin:// or ipfs:// URL
 function extractCID(uri) {
@@ -120,50 +43,38 @@ function extractCID(uri) {
   if (uri.startsWith('ipfs://')) {
     return uri.replace('ipfs://', '').split('/')[0];
   }
-  return uri;
+  return null;
 }
 
-// Fetch metadata from proxy with retry
-async function fetchMetadata(pieceCid, retries = 2) {
-  for (let i = 0; i <= retries; i++) {
+// Fetch metadata with retry logic
+async function fetchMetadata(pieceCid, retries = 3) {
+  for (let i = 0; i < retries; i++) {
     try {
       const response = await fetch(`${PROXY_SERVER}/metadata/${pieceCid}`);
       if (response.status === 429) {
-        const waitTime = Math.pow(2, i) * 1000;
-        await new Promise(resolve => setTimeout(resolve, waitTime));
+        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
         continue;
       }
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return await response.json();
     } catch (error) {
+      console.error(`Metadata fetch attempt ${i + 1} failed:`, error);
       if (i === retries) {
-        console.error('Error fetching metadata:', error);
-        return null;
+        throw error;
       }
       await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
     }
   }
-  return null;
 }
 
 function NFTViewer() {
-  const { address, isConnected } = useAccount()
   const [nfts, setNfts] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadingMessage, setLoadingMessage] = useState('Initializing...')
   const [showRawData, setShowRawData] = useState(false)
 
-  // Viewing address (defaults to owner, but can view any address)
-  const viewingAddress = (address || OWNER_ADDRESS).toLowerCase()
-
-  // Fetch balance from Base
-  const { data: baseBalance } = useReadContract({
-    address: BASE_NFT,
-    abi: ERC721_ABI,
-    functionName: 'balanceOf',
-    args: [viewingAddress],
-    chainId: baseSepolia.id,
-  })
+  // Viewing address (always use owner address)
+  const viewingAddress = OWNER_ADDRESS.toLowerCase()
 
   // Load NFTs from both chains
   useEffect(() => {
@@ -173,15 +84,41 @@ function NFTViewer() {
       setLoadingMessage('Checking Base Sepolia balance...')
       const allNFTs = []
 
-      // Load Base NFTs
-      if (baseBalance && Number(baseBalance) > 0) {
-        console.log('Base balance:', Number(baseBalance))
-        setLoadingMessage(`Loading ${Number(baseBalance)} NFT${Number(baseBalance) > 1 ? 's' : ''} from Base Sepolia...`)
-        const baseNFTs = await loadChainNFTs('base', Number(baseBalance), viewingAddress)
-        console.log('Base NFTs found:', baseNFTs.length)
-        allNFTs.push(...baseNFTs)
-      } else {
-        console.log('No Base NFTs (balance:', baseBalance, ')')
+      // Load Base NFTs - check balance via RPC
+      try {
+        const baseBalanceResponse = await fetch('https://sepolia.base.org', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'eth_call',
+            params: [
+              {
+                to: BASE_NFT,
+                data: encodeFunctionData({
+                  abi: ERC721_ABI,
+                  functionName: 'balanceOf',
+                  args: [viewingAddress],
+                }),
+              },
+              'latest',
+            ],
+            id: 1,
+          }),
+        }).then(r => r.json())
+
+        if (baseBalanceResponse.result && baseBalanceResponse.result !== '0x') {
+          const baseBalance = BigInt(baseBalanceResponse.result)
+          if (baseBalance > 0n) {
+            console.log('Base balance:', Number(baseBalance))
+            setLoadingMessage(`Loading ${Number(baseBalance)} NFT${Number(baseBalance) > 1 ? 's' : ''} from Base Sepolia...`)
+            const baseNFTs = await loadChainNFTs('base', Number(baseBalance), viewingAddress)
+            console.log('Base NFTs found:', baseNFTs.length)
+            allNFTs.push(...baseNFTs)
+          }
+        }
+      } catch (e) {
+        console.error('Error loading Base NFTs:', e)
       }
 
       // Load Flow NFTs (check balance via RPC)
@@ -228,150 +165,155 @@ function NFTViewer() {
     }
 
     loadNFTs()
-  }, [baseBalance, viewingAddress])
+  }, [viewingAddress])
 
   async function loadChainNFTs(chain, balance, owner) {
     const contractAddress = chain === 'base' ? BASE_NFT : FLOW_NFT
-    const foundTokens = []
+    const rpcUrl = chain === 'base' ? 'https://sepolia.base.org' : FLOW_RPC
 
-    // Find owned tokens (check 1-100)
-    for (let i = 1; i <= 100 && foundTokens.length < balance; i++) {
-      try {
-        if (i > 1) await new Promise(resolve => setTimeout(resolve, 100))
+    // Only check token IDs 1, 2, 3
+    const tokenIdsToCheck = [1, 2, 3]
+    
+    // Find owned tokens - PARALLEL REQUESTS
+    const ownerChecks = []
+    for (const tokenId of tokenIdsToCheck) {
+      const ownerData = encodeFunctionData({
+        abi: ERC721_ABI,
+        functionName: 'ownerOf',
+        args: [BigInt(tokenId)],
+      })
 
-        const ownerData = encodeFunctionData({
-          abi: ERC721_ABI,
-          functionName: 'ownerOf',
-          args: [BigInt(i)],
-        })
-
-        const rpcUrl = chain === 'base' ? 'https://sepolia.base.org' : FLOW_RPC
-        const response = await fetch(rpcUrl, {
+      ownerChecks.push(
+        fetch(rpcUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             jsonrpc: '2.0',
             method: 'eth_call',
             params: [{ to: contractAddress, data: ownerData }, 'latest'],
-            id: 1,
+            id: tokenId,
           }),
         })
-
-        const data = await response.json()
-        if (data.result && data.result !== '0x') {
-          const result = decodeFunctionResult({
-            abi: ERC721_ABI,
-            functionName: 'ownerOf',
-            data: data.result,
+          .then(r => r.json())
+          .then(data => {
+            if (data.result && data.result !== '0x') {
+              try {
+                const nftOwner = decodeFunctionResult({
+                  abi: ERC721_ABI,
+                  functionName: 'ownerOf',
+                  data: data.result,
+                })
+                if (nftOwner.toLowerCase() === owner.toLowerCase()) {
+                  return tokenId
+                }
+              } catch (e) {
+                // Invalid result, skip
+              }
+            }
+            return null
           })
-          if (result.toLowerCase() === owner.toLowerCase()) {
-            foundTokens.push(i)
-          }
-        }
-      } catch (e) {
-        // Token doesn't exist, skip
-      }
+          .catch(() => null)
+      )
     }
 
-    // Get token URIs - always from Base contract (source of truth)
-    const nftData = []
-    for (let idx = 0; idx < foundTokens.length; idx++) {
-      const tokenId = foundTokens[idx]
-      try {
-        if (idx > 0) await new Promise(resolve => setTimeout(resolve, 150))
+    // Wait for all owner checks
+    const results = await Promise.all(ownerChecks)
+    const foundTokens = results.filter(id => id !== null)
 
-        // Always fetch tokenURI from Base contract (even for Flow NFTs)
-        const uriData = encodeFunctionData({
-          abi: ERC721_ABI,
-          functionName: 'tokenURI',
-          args: [BigInt(tokenId)],
+    // Get token URIs - always from Base contract (source of truth) - PARALLEL REQUESTS
+    const uriPromises = foundTokens.map(tokenId => {
+      const uriData = encodeFunctionData({
+        abi: ERC721_ABI,
+        functionName: 'tokenURI',
+        args: [BigInt(tokenId)],
+      })
+
+      return fetch('https://sepolia.base.org', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'eth_call',
+          params: [{ to: BASE_NFT, data: uriData }, 'latest'],
+          id: tokenId,
+        }),
+      })
+        .then(r => r.json())
+        .then(result => {
+          if (result.result && result.result !== '0x') {
+            try {
+              const uri = decodeFunctionResult({
+                abi: ERC721_ABI,
+                functionName: 'tokenURI',
+                data: result.result,
+              })
+              return { tokenId, uri }
+            } catch (e) {
+              return { tokenId, uri: null }
+            }
+          }
+          return { tokenId, uri: null }
         })
+        .catch(() => ({ tokenId, uri: null }))
+    })
 
-        const uriResponse = await fetch('https://sepolia.base.org', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            jsonrpc: '2.0',
-            method: 'eth_call',
-            params: [{ to: BASE_NFT, data: uriData }, 'latest'],
-            id: 1,
-          }),
-        })
+    const uriResults = await Promise.all(uriPromises)
 
-        const uriResult = await uriResponse.json()
-        let uri = null
-        let metadata = null
-
-        if (uriResult.result && uriResult.result !== '0x') {
-          const decoded = decodeFunctionResult({
-            abi: ERC721_ABI,
-            functionName: 'tokenURI',
-            data: uriResult.result,
-          })
-          uri = decoded
-          const metadataCid = extractCID(uri)
-
-          if (metadataCid) {
-            metadata = await fetchMetadata(metadataCid)
+    // Fetch metadata in parallel
+    const nftPromises = uriResults.map(async ({ tokenId, uri }) => {
+      const metadataCid = extractCID(uri)
+      if (metadataCid) {
+        try {
+          const metadata = await fetchMetadata(metadataCid)
+          return {
+            tokenId,
+            chain,
+            uri,
+            metadataCid,
+            metadata,
+          }
+        } catch (error) {
+          console.error(`Failed to fetch metadata for token ${tokenId}:`, error)
+          return {
+            tokenId,
+            chain,
+            uri,
+            metadataCid,
+            error: error.message,
           }
         }
-
-        nftData.push({
-          tokenId: tokenId.toString(),
-          chain: chain,
-          uri: uri,
-          contractAddress: contractAddress,
-          metadata: metadata,
-          metadataCid: extractCID(uri),
-        })
-      } catch (e) {
-        console.error(`Error loading token ${tokenId}:`, e)
-        nftData.push({
-          tokenId: tokenId.toString(),
-          chain: chain,
-          uri: null,
-          contractAddress: contractAddress,
-          metadata: null,
-          error: e.message,
-        })
       }
-    }
+      return {
+        tokenId,
+        chain,
+        uri,
+        metadataCid: null,
+        error: 'No metadata CID found',
+      }
+    })
 
-    return nftData
+    return await Promise.all(nftPromises)
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center space-y-4">
-          <div className="relative">
-            <div className="animate-spin rounded-full h-16 w-16 border-4 border-cosmic-border border-t-cosmic-accent mx-auto"></div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="h-8 w-8 rounded-full bg-cosmic-accent/20 animate-pulse"></div>
-            </div>
-          </div>
-          <div>
-            <p className="text-cosmic-muted text-lg font-semibold mb-2">{loadingMessage}</p>
-            <p className="text-cosmic-muted/80 text-sm">This may take a moment...</p>
-          </div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cosmic-accent mx-auto mb-4"></div>
+          <p className="text-cosmic-muted text-lg">{loadingMessage}</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      {isConnected && (
-        <div className="bg-cosmic-surface border border-cosmic-border rounded-lg p-4 backdrop-blur-sm">
-          <p className="text-sm text-cosmic-muted/90">
-            Viewing: <span className="text-cosmic-muted/80 font-mono">{viewingAddress.substring(0, 6)}...{viewingAddress.substring(38)}</span>
-          </p>
-        </div>
-      )}
-
-      <div className="flex items-center justify-center border border-cosmic-border rounded-lg p-4 backdrop-blur-sm" style={{ backgroundColor: '#1e1e3e' }}>
-        <label className="flex items-center space-x-3 cursor-pointer">
-          <span className="text-cosmic-text font-medium">Show Raw CIDs & Piece IDs</span>
+    <div className="space-y-6" style={{ backgroundColor: '#1e1e3e' }}>
+      <div className="flex items-center justify-between border border-cosmic-border rounded-lg p-3 backdrop-blur-sm" style={{ backgroundColor: '#1e1e3e' }}>
+        <p className="text-sm text-cosmic-muted/90">
+          Viewing: <span className="text-cosmic-muted/80 font-mono">{viewingAddress.substring(0, 6)}...{viewingAddress.substring(38)}</span>
+        </p>
+        <label className="flex items-center space-x-4 cursor-pointer">
+          <span className="text-cosmic-text font-semibold text-base">Show Raw CIDs & Piece IDs</span>
           <div className="relative">
             <input
               type="checkbox"
@@ -379,8 +321,8 @@ function NFTViewer() {
               onChange={(e) => setShowRawData(e.target.checked)}
               className="sr-only"
             />
-            <div className={`w-14 h-7 rounded-full transition-colors ${showRawData ? 'bg-gradient-to-r from-cosmic-accent to-cosmic-nebula' : 'bg-cosmic-border'}`}>
-              <div className={`w-6 h-6 bg-gray-300 rounded-full shadow-md transform transition-transform ${showRawData ? 'translate-x-7' : 'translate-x-1'} mt-0.5`}></div>
+            <div className={`w-16 h-9 rounded-full transition-colors shadow-lg ${showRawData ? 'bg-gradient-to-r from-purple-500 to-indigo-500' : 'bg-gray-600'}`}>
+              <div className={`w-7 h-7 bg-white rounded-full shadow-lg transform transition-transform ${showRawData ? 'translate-x-8' : 'translate-x-1'} mt-1`}></div>
             </div>
           </div>
         </label>
@@ -397,9 +339,7 @@ function NFTViewer() {
             <NFTCard
               key={`${nft.chain}-${nft.tokenId}`}
               nft={nft}
-              address={address}
               showRawData={showRawData}
-              viewingAddress={viewingAddress}
             />
           ))}
         </div>
@@ -408,115 +348,7 @@ function NFTViewer() {
   )
 }
 
-function NFTCard({ nft, address, showRawData, viewingAddress }) {
-  const { writeContract, data: hash, isPending } = useWriteContract()
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash })
-  const [bridging, setBridging] = useState(false)
-
-  const canBridge = address && address.toLowerCase() === OWNER_ADDRESS.toLowerCase()
-
-  // Convert address to bytes32 (pad to 32 bytes)
-  const addressBytes32 = address ? pad(address, { size: 32 }) : '0x0'
-
-  // Quote the bridge fee
-  const { data: feeData, refetch: refetchFee } = useReadContract({
-    address: ADAPTER_ADDRESS,
-    abi: ADAPTER_ABI,
-    functionName: 'quoteSend',
-    args: [
-      {
-        dstEid: FLOW_EID,
-        to: addressBytes32,
-        tokenId: BigInt(nft.tokenId),
-        extraOptions: '0x',
-        composeMsg: '0x',
-        onftCmd: '0x',
-      },
-      false,
-    ],
-    chainId: baseSepolia.id,
-    query: {
-      enabled: canBridge && nft.chain === 'base' && !!address,
-    },
-  })
-
-  async function handleBridge() {
-    if (!canBridge) {
-      alert('Only the owner can bridge NFTs')
-      return
-    }
-
-    if (!address) {
-      alert('Please connect your wallet')
-      return
-    }
-
-    try {
-      setBridging(true)
-
-      // Step 1: Approve adapter
-      console.log('Step 1: Approving adapter...')
-      const approveHash = await writeContract({
-        address: BASE_NFT,
-        abi: ERC721_ABI,
-        functionName: 'approve',
-        args: [ADAPTER_ADDRESS, BigInt(nft.tokenId)],
-      })
-
-      console.log('Approval transaction:', approveHash)
-      alert(`Approval sent! Transaction: ${approveHash}\n\nWaiting for confirmation...`)
-
-      // Wait for approval to be confirmed
-      await new Promise(resolve => setTimeout(resolve, 3000))
-
-      // Step 2: Get fee (refresh if needed)
-      if (!feeData) {
-        await refetchFee()
-        await new Promise(resolve => setTimeout(resolve, 1000))
-      }
-
-      if (!feeData) {
-        throw new Error('Could not get bridge fee quote')
-      }
-
-      const fee = feeData
-      console.log('Bridge fee:', formatEther(fee.nativeFee), 'ETH')
-
-      // Step 3: Build sendParam
-      const sendParam = {
-        dstEid: FLOW_EID,
-        to: addressBytes32,
-        tokenId: BigInt(nft.tokenId),
-        extraOptions: '0x',
-        composeMsg: '0x',
-        onftCmd: '0x',
-      }
-
-      // Step 4: Send NFT
-      console.log('Step 2: Sending NFT...')
-      const sendHash = await writeContract({
-        address: ADAPTER_ADDRESS,
-        abi: ADAPTER_ABI,
-        functionName: 'send',
-        args: [sendParam, fee, address],
-        value: fee.nativeFee,
-      })
-
-      console.log('Bridge transaction:', sendHash)
-      alert(
-        `✅ Bridge transaction sent!\n\n` +
-        `Transaction: ${sendHash}\n\n` +
-        `View on BaseScan: https://sepolia.basescan.org/tx/${sendHash}\n\n` +
-        `The NFT will appear on Flow EVM in a few minutes.`
-      )
-    } catch (error) {
-      console.error('Bridge error:', error)
-      alert('Bridge failed: ' + (error.message || error.toString()))
-    } finally {
-      setBridging(false)
-    }
-  }
-
+function NFTCard({ nft, showRawData }) {
   // Get image URL
   let imageCid = null
   if (nft.metadata?.image) {
@@ -574,28 +406,6 @@ function NFTCard({ nft, address, showRawData, viewingAddress }) {
             </div>
           )}
         </div>
-        
-        {canBridge && nft.chain === 'base' && (
-          <div className="space-y-2 pt-2 border-t border-cosmic-border">
-            {feeData && (
-              <div className="text-[10px] text-cosmic-muted">
-                Fee: ~{formatEther(feeData.nativeFee)} ETH
-              </div>
-            )}
-            <button
-              onClick={handleBridge}
-              disabled={isPending || isConfirming || bridging}
-              className="w-full bg-gradient-to-r from-cosmic-accent to-cosmic-nebula hover:from-purple-600 hover:to-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2 px-3 rounded-lg transition-all text-xs shadow-lg shadow-purple-500/30"
-            >
-              {isPending || isConfirming || bridging ? 'Bridging...' : '🌉 Bridge to Flow'}
-            </button>
-            {isSuccess && (
-              <div className="bg-emerald-900/30 border border-emerald-600/30 text-emerald-400 rounded p-2 text-xs">
-                ✅ Bridge confirmed!
-              </div>
-            )}
-          </div>
-        )}
         
         {nft.error && (
           <div className="bg-red-900/30 border border-red-600/30 text-red-400 rounded p-2 text-xs">

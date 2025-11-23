@@ -4,7 +4,7 @@
 
 @layer base {
   body {
-    background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 30%, #2d1b4e 60%, #1a1a3e 100%);
+    background: #1e1e3e;
     background-attachment: fixed;
     min-height: 100vh;
     color: #e8e8ff;
